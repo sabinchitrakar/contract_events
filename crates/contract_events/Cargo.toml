@@ -9,3 +9,6 @@ edition = "2021"
 contract-metadata="1.5.1"
 contract-transcode="0.2.0"
 subxt="0.24.0"
+sp-core = "7.0.0"
+sp-weights = "4.0.0"
+scale = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"] }

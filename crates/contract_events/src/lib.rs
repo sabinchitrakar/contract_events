@@ -1,9 +1,11 @@
-
+mod contract_runtime;
 use contract_transcode::ContractMessageTranscoder;
+use contract_transcode::env_types::AccountId;
 use std::path::Path;
 use subxt::Config;
 use subxt::OnlineClient;
-use subxt::events::Events;
+use subxt::events::{Events,EventDetails,StaticEvent};
+use crate::contract_runtime::api::contracts::events::ContractEmitted;
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
@@ -33,6 +35,20 @@ impl<T:Config> ContractEventParser<T>{
         let block_hash = self.client.rpc().block_hash(Some(block_number.into())).await.unwrap();
         let events = self.client.events().at(block_hash).await.unwrap();
         events
+
+    }
+
+    pub async fn get_contract_events(&self,contract_address:AccountId,block_number:u64){
+        let events= self.get_events_at(block_number).await;
+        for event_result in events.iter() {
+            let event =event_result.unwrap();
+            if <ContractEmitted as StaticEvent>::is_event(&event.pallet_name(), &event.variant_name()){
+                 println!("found event {:?}",event);
+            }
+           
+            
+            
+        }
 
     }
 }
