@@ -1,6 +1,21 @@
+
+use contract_transcode::ContractMessageTranscoder;
+use std::path::Path;
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
+
+
+pub fn get_transcoder(path:&str)->ContractMessageTranscoder{
+    let metadata_path = Path::new(path);
+    let transcoder = ContractMessageTranscoder::load(metadata_path).unwrap();
+    transcoder
+}
+
+
+
+
+
 
 #[cfg(test)]
 mod tests {
