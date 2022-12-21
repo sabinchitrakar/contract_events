@@ -87,6 +87,7 @@ impl<T: Config> ContractEventParser<T> {
             if let Some(contract_emitted_event) = maybe_contract_emitted_event {
                 println!("found event {:?}", &event.variant_name());
                 println!("parsed event {:?}", &contract_emitted_event);
+                
                 if self
                     .transcoders_map
                     .contains_key(&contract_emitted_event.contract)
