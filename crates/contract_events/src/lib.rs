@@ -2,13 +2,13 @@ mod contract_runtime;
 use crate::contract_runtime::api::contracts::events::ContractEmitted;
 use contract_transcode::ContractMessageTranscoder;
 use contract_transcode::Value;
+use hex_literal::hex;
 use std::collections::HashMap;
 use std::path::Path;
 use subxt::events::{Events, StaticEvent};
 use subxt::ext::sp_runtime::AccountId32;
 use subxt::Config;
 use subxt::OnlineClient;
-use hex_literal::hex;
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
@@ -17,6 +17,15 @@ pub fn get_transcoder(path: &str) -> ContractMessageTranscoder {
     let metadata_path = Path::new(path);
     let transcoder = ContractMessageTranscoder::load(metadata_path).unwrap();
     transcoder
+}
+
+#[derive(Debug, Clone)]
+pub enum EventParseError {
+    WsConnectionFailed(String),
+    FailedToGetEvents(String),
+    ErrorGettingEventDetail(String),
+    FailedToCastAsContractEmitted(String),
+    ContractEventDecodeFailed(String),
 }
 
 pub struct ContractEventParser<T: Config> {
@@ -32,7 +41,7 @@ pub struct ContractInfo<'a> {
 pub struct ContractEvent {
     pub name: String,
     pub value: serde_json::Value,
-    pub address: AccountId32
+    pub address: AccountId32,
 }
 
 impl<T: Config> ContractEventParser<T> {
@@ -48,54 +57,70 @@ impl<T: Config> ContractEventParser<T> {
         }
     }
 
-    pub async fn get_events_at(&self, block_number: u64) -> Events<T> {
+    pub async fn get_events_at(&self, block_number: u64) -> Result<Events<T>, EventParseError> {
         let block_hash = self
             .client
             .rpc()
             .block_hash(Some(block_number.into()))
             .await
-            .unwrap();
-        let events = self.client.events().at(block_hash).await.unwrap();
-        events
+            .map_err(|e| EventParseError::WsConnectionFailed(e.to_string()))?;
+        let events = self
+            .client
+            .events()
+            .at(block_hash)
+            .await
+            .map_err(|e| EventParseError::FailedToGetEvents(e.to_string()))?;
+        Ok(events)
     }
 
-    pub async fn get_contract_events_at(&self, block_number: u64) -> Vec<ContractEvent> {
-        let events = self.get_events_at(block_number).await;
-        let mut json_events: Vec<ContractEvent> = Vec::new();
+    pub async fn get_contract_events_at(
+        &self,
+        block_number: u64,
+    ) -> Result<Vec<ContractEvent>, EventParseError> {
+        let events = self.get_events_at(block_number).await?;
+        let mut contract_events: Vec<ContractEvent> = Vec::new();
         for event_result in events.iter() {
-            let event = event_result.unwrap();
+            let event = event_result
+                .map_err(|e| EventParseError::ErrorGettingEventDetail(e.to_string()))?;
             if <ContractEmitted as StaticEvent>::is_event(
                 &event.pallet_name(),
                 &event.variant_name(),
             ) {
-                let contract_emitted_event = event.as_event::<ContractEmitted>().unwrap().unwrap();
-                println!("found event {:?}", &event.variant_name());
-                println!("parsed event {:?}", &contract_emitted_event);
-                if self
-                    .transcoders_map
-                    .contains_key(&contract_emitted_event.contract)
-                {
-                    let transcoder = self
+                let maybe_contract_emitted_event = event
+                    .as_event::<ContractEmitted>()
+                    .map_err(|e| EventParseError::FailedToCastAsContractEmitted(e.to_string()))?;
+
+                if let Some(contract_emitted_event) = maybe_contract_emitted_event {
+                    println!("found event {:?}", &event.variant_name());
+                    println!("parsed event {:?}", &contract_emitted_event);
+                    if self
                         .transcoders_map
-                        .get(&contract_emitted_event.contract)
-                        .unwrap();
+                        .contains_key(&contract_emitted_event.contract)
+                    {
+                        let transcoder = self
+                            .transcoders_map
+                            .get(&contract_emitted_event.contract)
+                            .unwrap();
 
-                    let contract_event = transcoder
-                        .decode_contract_event(&mut event.bytes())
-                        .unwrap();
+                        let contract_event = transcoder
+                            .decode_contract_event(&mut event.bytes())
+                            .map_err(|e| {
+                            EventParseError::ContractEventDecodeFailed(e.to_string())
+                        })?;
 
-                    let event_name = get_contract_event_name(&contract_event);
-                    let json_value = to_json_value(contract_event);
-                    println!("decoded event {:?}", &json_value);
-                    json_events.push(ContractEvent {
-                        name: event_name,
-                        value: json_value,
-                        address:contract_emitted_event.contract,
-                    })
+                        let event_name = get_contract_event_name(&contract_event);
+                        let json_value = to_json_value(contract_event);
+                        println!("decoded event {:?}", &json_value);
+                        contract_events.push(ContractEvent {
+                            name: event_name,
+                            value: json_value,
+                            address: contract_emitted_event.contract,
+                        })
+                    }
                 }
             }
         }
-        return json_events;
+        Ok(contract_events)
     }
 }
 
@@ -163,11 +188,16 @@ mod tests {
                 .unwrap();
         let contract_parser = ContractEventParser::new(
             vec![ContractInfo {
-                address: AccountId32::from(hex!("f2d85bfd0f776b82feb093c01a2e71cc24570d5fb5f09759b5ed09abab76d574")),
+                address: AccountId32::from(hex!(
+                    "f2d85bfd0f776b82feb093c01a2e71cc24570d5fb5f09759b5ed09abab76d574"
+                )),
                 metadata_path: "../../contracts/staking_rewards/metadata.json",
             }],
             api,
         );
-        contract_parser.get_contract_events_at(547926).await;
+        contract_parser
+            .get_contract_events_at(547926)
+            .await
+            .unwrap();
     }
 }
