@@ -16,9 +16,7 @@
 
 #![allow(clippy::too_many_arguments)]
 
-#[subxt::subxt(
-    runtime_metadata_path = "src/contract_runtime/contracts_runtime.scale"
-)]
+#[subxt::subxt(runtime_metadata_path = "src/contract_runtime/contracts_runtime.scale")]
 pub mod api {
     #[subxt(substitute_type = "sp_weights::weight_v2::Weight")]
     use ::sp_weights::Weight;
