@@ -45,6 +45,8 @@ impl<T:Config> ContractEventParser<T>{
             let event =event_result.unwrap();
             if <ContractEmitted as StaticEvent>::is_event(&event.pallet_name(), &event.variant_name()){
                  println!("found event {:?}",&event.variant_name());
+                 let contract_event = self.transcoder.decode_contract_event(&mut event.bytes()).unwrap();
+                 println!("decoded event {:?}",&contract_event);
             }
            
             
