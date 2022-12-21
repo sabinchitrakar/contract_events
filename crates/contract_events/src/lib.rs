@@ -5,7 +5,7 @@ use contract_transcode::Value;
 use hex_literal::hex;
 use std::collections::HashMap;
 use std::path::Path;
-use subxt::events::{Events, StaticEvent};
+use subxt::events::{EventDetails, Events, StaticEvent};
 use subxt::ext::sp_runtime::AccountId32;
 use subxt::Config;
 use subxt::OnlineClient;
@@ -82,41 +82,32 @@ impl<T: Config> ContractEventParser<T> {
         for event_result in events.iter() {
             let event = event_result
                 .map_err(|e| EventParseError::ErrorGettingEventDetail(e.to_string()))?;
-            if <ContractEmitted as StaticEvent>::is_event(
-                &event.pallet_name(),
-                &event.variant_name(),
-            ) {
-                let maybe_contract_emitted_event = event
-                    .as_event::<ContractEmitted>()
-                    .map_err(|e| EventParseError::FailedToCastAsContractEmitted(e.to_string()))?;
+            let maybe_contract_emitted_event = to_contract_emitted_event(&event)?;
 
-                if let Some(contract_emitted_event) = maybe_contract_emitted_event {
-                    println!("found event {:?}", &event.variant_name());
-                    println!("parsed event {:?}", &contract_emitted_event);
-                    if self
+            if let Some(contract_emitted_event) = maybe_contract_emitted_event {
+                println!("found event {:?}", &event.variant_name());
+                println!("parsed event {:?}", &contract_emitted_event);
+                if self
+                    .transcoders_map
+                    .contains_key(&contract_emitted_event.contract)
+                {
+                    let transcoder = self
                         .transcoders_map
-                        .contains_key(&contract_emitted_event.contract)
-                    {
-                        let transcoder = self
-                            .transcoders_map
-                            .get(&contract_emitted_event.contract)
-                            .unwrap();
+                        .get(&contract_emitted_event.contract)
+                        .unwrap();
 
-                        let contract_event = transcoder
-                            .decode_contract_event(&mut event.bytes())
-                            .map_err(|e| {
-                            EventParseError::ContractEventDecodeFailed(e.to_string())
-                        })?;
+                    let contract_event = transcoder
+                        .decode_contract_event(&mut event.bytes())
+                        .map_err(|e| EventParseError::ContractEventDecodeFailed(e.to_string()))?;
 
-                        let event_name = get_contract_event_name(&contract_event);
-                        let json_value = to_json_value(contract_event);
-                        println!("decoded event {:?}", &json_value);
-                        contract_events.push(ContractEvent {
-                            name: event_name,
-                            value: json_value,
-                            address: contract_emitted_event.contract,
-                        })
-                    }
+                    let event_name = get_contract_event_name(&contract_event);
+                    let json_value = to_json_value(contract_event);
+                    println!("decoded event {:?}", &json_value);
+                    contract_events.push(ContractEvent {
+                        name: event_name,
+                        value: json_value,
+                        address: contract_emitted_event.contract,
+                    })
                 }
             }
         }
@@ -129,6 +120,22 @@ pub fn get_contract_event_name(val: &Value) -> String {
         Value::Map(m) => String::from(m.ident().unwrap_or(String::from("Unnamed"))),
         _ => String::from("Unnamed"),
     }
+}
+
+pub fn to_contract_emitted_event(
+    event_detail: &EventDetails,
+) -> Result<Option<ContractEmitted>, EventParseError> {
+    if <ContractEmitted as StaticEvent>::is_event(
+        &event_detail.pallet_name(),
+        &event_detail.variant_name(),
+    ) {
+        let maybe_contract_emitted_event = event_detail
+            .as_event::<ContractEmitted>()
+            .map_err(|e| EventParseError::FailedToCastAsContractEmitted(e.to_string()))?;
+        return Ok(maybe_contract_emitted_event);
+    }
+
+    return Ok(None);
 }
 
 pub fn to_json_value(val: Value) -> serde_json::Value {
@@ -186,6 +193,7 @@ mod tests {
             OnlineClient::from_url("wss://snow-rpc-1.icenetwork.io:443")
                 .await
                 .unwrap();
+
         let contract_parser = ContractEventParser::new(
             vec![ContractInfo {
                 address: AccountId32::from(hex!(
@@ -195,9 +203,11 @@ mod tests {
             }],
             api,
         );
-        contract_parser
+
+        let events = contract_parser
             .get_contract_events_at(547926)
             .await
             .unwrap();
+        assert_eq!(events.len(), 1)
     }
 }
