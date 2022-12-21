@@ -20,13 +20,20 @@ pub fn get_transcoder(path: &str) -> ContractMessageTranscoder {
 pub struct ContractEventParser<T: Config> {
     transcoder: ContractMessageTranscoder,
     client: OnlineClient<T>,
+    contract_address:AccountId32
+}
+
+pub struct DecodedEvent {
+    pub name:String,
+    pub value:serde_json::Value
 }
 
 impl<T: Config> ContractEventParser<T> {
-    pub fn new(metadata_path: &str, client: OnlineClient<T>) -> Self {
+    pub fn new(contract_address:AccountId32,metadata_path: &str, client: OnlineClient<T>) -> Self {
         Self {
             client,
             transcoder: get_transcoder(metadata_path),
+            contract_address
         }
     }
 
@@ -41,13 +48,12 @@ impl<T: Config> ContractEventParser<T> {
         events
     }
 
-    pub async fn get_contract_events(
+    pub async fn get_contract_events_at(
         &self,
-        contract_address: AccountId32,
         block_number: u64,
-    ) -> Vec<serde_json::Value> {
+    ) -> Vec<DecodedEvent> {
         let events = self.get_events_at(block_number).await;
-        let mut json_events: Vec<serde_json::Value> = Vec::new();
+        let mut json_events: Vec<DecodedEvent> = Vec::new();
         for event_result in events.iter() {
             let event = event_result.unwrap();
             if <ContractEmitted as StaticEvent>::is_event(
@@ -55,19 +61,37 @@ impl<T: Config> ContractEventParser<T> {
                 &event.variant_name(),
             ) {
                 let contract_emitted_event = event.as_event::<ContractEmitted>().unwrap().unwrap();
-                if contract_emitted_event.contract.eq(&contract_address) {}
+                if contract_emitted_event.contract.eq(&self.contract_address) {
+
+                }
                 println!("found event {:?}", &event.variant_name());
                 println!("parsed event {:?}", &contract_emitted_event);
                 let contract_event = self
                     .transcoder
                     .decode_contract_event(&mut event.bytes())
                     .unwrap();
+                let event_name = get_contract_event_name(&contract_event);
                 let json_value = to_json_value(contract_event);
                 println!("decoded event {:?}", &json_value);
-                json_events.push(json_value)
+                json_events.push(DecodedEvent{
+                    name:event_name,
+                    value:json_value
+                })
             }
         }
         return json_events;
+    }
+}
+
+
+pub fn get_contract_event_name(val:&Value)->String{
+    match val {
+        Value::Map(m)=>{
+            String::from(m.ident().unwrap_or(String::from("Unnamed")))
+        },
+        _ => {
+            String::from("Unnamed")
+        }
     }
 }
 
@@ -126,10 +150,9 @@ mod tests {
             OnlineClient::from_url("wss://snow-rpc-1.icenetwork.io:443")
                 .await
                 .unwrap();
-        let contract_parser =
-            ContractEventParser::new("../../contracts/staking_rewards/metadata.json", api);
+        let contract_parser = ContractEventParser::new(AccountId32::from([0u8; 32]),"../../contracts/staking_rewards/metadata.json", api);
         contract_parser
-            .get_contract_events(AccountId32::from([0u8; 32]), 547926)
+            .get_contract_events_at(547926)
             .await;
     }
 }
