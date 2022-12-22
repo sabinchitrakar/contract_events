@@ -15,4 +15,7 @@ scale = { package = "parity-scale-codec", version = "3.0.0", features = ["derive
 serde="*"
 serde_json="*"
 tokio = { version = "1.8", features = ["macros", "rt-multi-thread"] }
+
+[dev-dependencies]
 hex-literal="*"
+

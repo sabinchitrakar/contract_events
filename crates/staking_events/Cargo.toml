@@ -9,3 +9,7 @@ edition = "2021"
 bonsaidb = { version = "*", features = ["local-full"] }
 contract_events={version="*",path="../contract_events"}
 serde = { version = "1", features = ["derive"] }
+serde_json="*"
+subxt="*"
+tokio = { version = "1", features = ["full"] }
+hex-literal="*"

@@ -2,7 +2,7 @@ mod contract_runtime;
 use crate::contract_runtime::api::contracts::events::ContractEmitted;
 use contract_transcode::ContractMessageTranscoder;
 use contract_transcode::Value;
-use hex_literal::hex;
+
 use std::collections::HashMap;
 use std::path::Path;
 use subxt::events::{EventDetails, Events, StaticEvent};
@@ -87,7 +87,7 @@ impl<T: Config> ContractEventParser<T> {
             if let Some(contract_emitted_event) = maybe_contract_emitted_event {
                 println!("found event {:?}", &event.variant_name());
                 println!("parsed event {:?}", &contract_emitted_event);
-                
+
                 if self
                     .transcoders_map
                     .contains_key(&contract_emitted_event.contract)
@@ -185,6 +185,7 @@ pub fn to_json_value(val: Value) -> serde_json::Value {
 mod tests {
     use super::*;
     use subxt::PolkadotConfig;
+    use hex_literal::hex;
     #[subxt::subxt(runtime_metadata_path = "../../artifacts/snow.scale")]
     pub mod snow {}
 

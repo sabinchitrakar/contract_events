@@ -3821,7 +3821,11 @@ version = "0.1.0"
 dependencies = [
  "bonsaidb",
  "contract_events",
+ "hex-literal",
  "serde",
+ "serde_json",
+ "subxt",
+ "tokio",
 ]
 
 [[package]]
