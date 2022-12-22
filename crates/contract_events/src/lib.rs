@@ -164,16 +164,20 @@ pub fn to_json_value(val: Value) -> serde_json::Value {
         Value::UInt(u) => serde_json::Value::String(u.to_string()),
         Value::Map(map) => {
             let mut new_map = serde_json::map::Map::new();
-            if let Some(id) = map.ident() {
-                let mut child_map = serde_json::map::Map::new();
-                for (key, val) in map.iter() {
-                    child_map.insert(key.to_string(), to_json_value(val.clone()));
-                }
-                new_map.insert(id, serde_json::Value::Object(child_map));
-            } else {
-                for (key, val) in map.iter() {
-                    new_map.insert(key.to_string(), to_json_value(val.clone()));
-                }
+            // if let Some(id) = map.ident() {
+            //     let mut child_map = serde_json::map::Map::new();
+            //     for (key, val) in map.iter() {
+            //         child_map.insert(key.to_string(), to_json_value(val.clone()));
+            //     }
+            //     new_map.insert(id, serde_json::Value::Object(child_map));
+            // } else {
+            //     for (key, val) in map.iter() {
+            //         new_map.insert(key.to_string(), to_json_value(val.clone()));
+            //     }
+            // }
+
+            for (key, val) in map.iter() {
+                new_map.insert(key.to_string(), to_json_value(val.clone()));
             }
             serde_json::Value::Object(new_map)
         }

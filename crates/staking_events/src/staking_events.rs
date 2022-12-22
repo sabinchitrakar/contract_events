@@ -17,11 +17,11 @@ pub struct WithdrawSuccessful {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LockBox {
-    id: u128,
-    created_at: u64,
-    deposit: u128,
-    interest: u64,
-    release: u64,
+    id: String,
+    created_at: String,
+    deposit: String,
+    interest: String,
+    release: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -30,3 +30,4 @@ pub enum StakingEvents {
     DepositSuccessful(DepositSuccessful),
     RedeemSuccessful(RedeemSuccessful),
 }
+
