@@ -30,4 +30,3 @@ pub enum StakingEvents {
     DepositSuccessful(DepositSuccessful),
     RedeemSuccessful(RedeemSuccessful),
 }
-

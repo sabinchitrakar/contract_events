@@ -5,10 +5,15 @@ use contract_transcode::Value;
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::mpsc::channel;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use subxt::events::{EventDetails, Events, StaticEvent};
 use subxt::ext::sp_runtime::AccountId32;
 use subxt::Config;
 use subxt::OnlineClient;
+use tokio::runtime::Runtime;
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
@@ -114,6 +119,14 @@ impl<T: Config> ContractEventParser<T> {
         }
         Ok(contract_events)
     }
+
+    pub async fn get_events(&self, from: u64, to: u64) {
+        let mut data: Vec<ContractEvent> = Vec::new();
+        for i in from..to {
+            let mut events = self.get_contract_events_at(i).await.unwrap();
+            data.append(&mut events);
+        }
+    }
 }
 
 pub fn get_contract_event_name(val: &Value) -> String {
@@ -164,17 +177,6 @@ pub fn to_json_value(val: Value) -> serde_json::Value {
         Value::UInt(u) => serde_json::Value::String(u.to_string()),
         Value::Map(map) => {
             let mut new_map = serde_json::map::Map::new();
-            // if let Some(id) = map.ident() {
-            //     let mut child_map = serde_json::map::Map::new();
-            //     for (key, val) in map.iter() {
-            //         child_map.insert(key.to_string(), to_json_value(val.clone()));
-            //     }
-            //     new_map.insert(id, serde_json::Value::Object(child_map));
-            // } else {
-            //     for (key, val) in map.iter() {
-            //         new_map.insert(key.to_string(), to_json_value(val.clone()));
-            //     }
-            // }
 
             for (key, val) in map.iter() {
                 new_map.insert(key.to_string(), to_json_value(val.clone()));
@@ -188,8 +190,8 @@ pub fn to_json_value(val: Value) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use subxt::PolkadotConfig;
     use hex_literal::hex;
+    use subxt::PolkadotConfig;
     #[subxt::subxt(runtime_metadata_path = "../../artifacts/snow.scale")]
     pub mod snow {}
 

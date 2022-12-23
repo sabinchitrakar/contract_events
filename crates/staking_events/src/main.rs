@@ -55,11 +55,10 @@ async fn main() {
 pub fn to_staking_event(event: ContractEvent) -> Option<StakingEvents> {
     match event.name.as_str() {
         "WithdrawSuccessful" => {
-            let withdraw: WithdrawSuccessful = serde_json::from_str(&event.value.to_string()).unwrap();
+            let withdraw: WithdrawSuccessful =
+                serde_json::from_str(&event.value.to_string()).unwrap();
             Some(StakingEvents::WithdrawSuccessful(withdraw))
         }
         _ => None,
     }
 }
-
-
