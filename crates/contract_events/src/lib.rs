@@ -5,18 +5,10 @@ use contract_transcode::Value;
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
-use std::thread;
 use subxt::events::{EventDetails, Events, StaticEvent};
 use subxt::ext::sp_runtime::AccountId32;
 use subxt::Config;
 use subxt::OnlineClient;
-use tokio::runtime::Runtime;
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
 
 pub fn get_transcoder(path: &str) -> ContractMessageTranscoder {
     let metadata_path = Path::new(path);
