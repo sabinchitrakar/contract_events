@@ -47,8 +47,8 @@ async fn main() {
         .unwrap();
     let staking_events = events
         .into_iter()
-        .map(|e| to_staking_event(e))
-        .collect::<Vec<Option<StakingEvents>>>();
+        .filter_map(|e| to_staking_event(e))
+        .collect::<Vec<StakingEvents>>();
     println!("staking {:?}", staking_events);
 }
 

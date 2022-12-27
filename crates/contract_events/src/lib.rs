@@ -39,6 +39,7 @@ pub struct ContractEvent {
     pub name: String,
     pub value: serde_json::Value,
     pub address: AccountId32,
+    pub block_number:u64,
 }
 
 impl<T: Config> ContractEventParser<T> {
@@ -104,6 +105,7 @@ impl<T: Config> ContractEventParser<T> {
                     contract_events.push(ContractEvent {
                         name: event_name,
                         value: json_value,
+                        block_number,
                         address: contract_emitted_event.contract,
                     })
                 }
